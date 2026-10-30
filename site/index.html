@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BlockWall: lock your content until the ad blocker is off</title>
+<meta name="description" content="BlockWall is a small JavaScript file that detects ad blockers and locks your page content until the visitor turns the blocker off.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f2f4f1;
+  --ink: #1a2230;
+  --muted: #4d596b;
+  --line: #cfd6d0;
+  --signal: #2447f5;
+  --signal-dark: #1b38c4;
+  --ok: #1f7a4d;
+  --bad: #c2362b;
+  --code-bg: #1a2230;
+  --code-ink: #e8ecf4;
+  --sans: "Familjen Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 18px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--signal); }
+a:focus-visible, button:focus-visible { outline: 3px solid #9db0ff; outline-offset: 3px; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+header { padding: 22px 0; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.brand { font-weight: 700; font-size: 20px; letter-spacing: -0.01em; }
+header nav a { margin-left: 20px; color: var(--ink); text-decoration: none; font-size: 16px; }
+header nav a:hover { color: var(--signal); }
+
+.hero { padding: 64px 0 56px; }
+.hero .wrap { display: grid; gap: 40px; grid-template-columns: 1fr; }
+@media (min-width: 860px) { .hero .wrap { grid-template-columns: 1.15fr 1fr; align-items: center; } }
+h1 {
+  margin: 0 0 20px;
+  font-size: clamp(38px, 6vw, 60px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+.lede { margin: 0 0 28px; max-width: 34em; color: var(--muted); font-size: 20px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn {
+  display: inline-block; padding: 12px 20px; border-radius: 8px; border: 2px solid var(--ink);
+  background: transparent; color: var(--ink); font: 600 17px var(--sans); text-decoration: none; cursor: pointer;
+}
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn.primary { background: var(--signal); border-color: var(--signal); color: #fff; }
+.btn.primary:hover { background: var(--signal-dark); border-color: var(--signal-dark); }
+
+/* Live readout: the one memorable element */
+.readout {
+  border: 2px solid var(--ink); border-radius: 14px; padding: 26px; background: #fff;
+}
+.readout h2 { margin: 0 0 14px; font-size: 16px; font-weight: 600; color: var(--muted); }
+.state { display: flex; align-items: center; gap: 14px; margin: 0; font-size: 28px; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; }
+.dot { flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); }
+.readout[data-state="checking"] .dot { animation: pulse 1s ease-in-out infinite; }
+.readout[data-state="clear"] .dot { background: var(--ok); }
+.readout[data-state="clear"] .state { color: var(--ok); }
+.readout[data-state="blocked"] .dot { background: var(--bad); }
+.readout[data-state="blocked"] .state { color: var(--bad); }
+.readout[data-state="error"] .dot { background: var(--bad); }
+.detail { margin: 14px 0 20px; color: var(--muted); font-size: 16px; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .readout[data-state="checking"] .dot { animation: none; } html { scroll-behavior: auto; } }
+
+section { padding: 56px 0; border-top: 1px solid var(--line); }
+h2.section { margin: 0 0 20px; font-size: 32px; line-height: 1.15; letter-spacing: -0.02em; }
+.prose { max-width: 38em; }
+.prose p { margin: 0 0 16px; }
+dl.checks { margin: 24px 0 0; display: grid; gap: 22px; max-width: 38em; }
+dl.checks dt { font-weight: 700; font-size: 20px; }
+dl.checks dd { margin: 4px 0 0; color: var(--muted); }
+
+pre {
+  margin: 0; padding: 22px; overflow-x: auto; border-radius: 12px;
+  background: var(--code-bg); color: var(--code-ink); font: 500 15px/1.65 var(--mono);
+}
+.codewrap { position: relative; max-width: 640px; }
+.copy {
+  position: absolute; top: 10px; right: 10px; padding: 6px 12px; border: 1px solid #55627a; border-radius: 6px;
+  background: #263245; color: var(--code-ink); font: 500 13px var(--mono); cursor: pointer;
+}
+.copy:hover { background: #32415a; }
+code.inline { font: 500 0.88em var(--mono); background: #e2e7e1; padding: 2px 6px; border-radius: 4px; }
+
+.tablewrap { overflow-x: auto; margin-top: 28px; }
+table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 16px; }
+th, td { padding: 12px 14px 12px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--muted); }
+td:first-child, td:nth-child(2) { font-family: var(--mono); font-size: 14px; white-space: nowrap; }
+
+ul.limits { margin: 0; padding-left: 1.2em; max-width: 38em; }
+ul.limits li { margin-bottom: 12px; }
+
+footer { padding: 32px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<div id="page">
+  <header>
+    <div class="wrap">
+      <span class="brand">BlockWall</span>
+      <nav aria-label="Main">
+        <a href="#how">How it works</a>
+        <a href="docs.html">Docs</a>
+        <a href="#install">Install</a>
+        <a href="#limits">Limits</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="wrap">
+        <div>
+          <h1>Lock your content until the ad blocker is off.</h1>
+          <p class="lede">BlockWall is one JavaScript file with no dependencies. It detects ad blockers and covers your page with a message until the visitor turns the blocker off for your site.</p>
+          <div class="actions">
+            <a class="btn primary" href="#install">Add it to your site</a>
+            <a class="btn" href="docs.html">Read the docs</a>
+            <button class="btn" type="button" id="preview">Preview the wall</button>
+          </div>
+        </div>
+
+        <div class="readout" id="readout" data-state="checking">
+          <h2>Your browser, right now</h2>
+          <p class="state" id="state" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="state-text">Checking…</span></p>
+          <p class="detail" id="detail">Running the same checks BlockWall uses on your site.</p>
+          <button class="btn" type="button" id="recheck">Check again</button>
+        </div>
+      </div>
+    </div>
+
+    <section id="how">
+      <div class="wrap">
+        <h2 class="section">How it detects a blocker</h2>
+        <div class="prose">
+          <p>No single test catches every blocker, so BlockWall runs two and locks the page if either one fails.</p>
+        </div>
+        <dl class="checks">
+          <div>
+            <dt>A bait element</dt>
+            <dd>It adds a hidden box with class names like <code class="inline">ad-banner</code> and <code class="inline">adsbox</code>. Browser-extension blockers hide anything with those names, so a box that has no size means a blocker is active.</dd>
+          </div>
+          <div>
+            <dt>A bait request</dt>
+            <dd>It requests a well-known ad script. DNS and network-level blockers refuse the request, so a failed request means a blocker is active. BlockWall skips this check when the browser is offline or the request times out.</dd>
+          </div>
+          <div>
+            <dt>Re-checking</dt>
+            <dd>BlockWall checks again when the visitor returns to the tab, when they press the button, and on a timer. The wall comes down by itself once the blocker is off, and goes back up if it is turned on again.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section id="install">
+      <div class="wrap">
+        <h2 class="section">Install</h2>
+        <div class="prose">
+          <p>Upload <code class="inline">blockwall.js</code> next to your pages. Put the content to lock inside one element and point <code class="inline">target</code> at it.</p>
+        </div>
+        <div class="codewrap">
+          <button class="copy" type="button" id="copy">Copy</button>
+<pre id="snippet"><code>&lt;script src="blockwall.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  AdBlockWall.init({
+    target: "#content",
+    mode: "blur",
+    title: "Please turn off your ad blocker"
+  });
+&lt;/script&gt;</code></pre>
+        </div>
+        <div class="prose" style="margin-top:20px">
+          <p>Prefer no extra script block? Use <code class="inline">&lt;script src="blockwall.js" data-auto data-target="#content"&gt;&lt;/script&gt;</code>.</p>
+        </div>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td>target</td><td>body children</td><td>CSS selector of the content to lock.</td></tr>
+              <tr><td>mode</td><td>"blur"</td><td>"blur" leaves content visible but unreadable. "hide" hides it.</td></tr>
+              <tr><td>title, message</td><td>built in</td><td>The text shown on the wall.</td></tr>
+              <tr><td>buttonText</td><td>"I've turned it off"</td><td>Label of the button that re-checks.</td></tr>
+              <tr><td>networkCheck</td><td>true</td><td>Turn off if your Content Security Policy blocks outside requests.</td></tr>
+              <tr><td>recheckInterval</td><td>15000</td><td>Milliseconds between automatic checks. 0 turns them off.</td></tr>
+              <tr><td>onDetect, onClear</td><td>none</td><td>Callbacks for when the wall goes up and comes down.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="wrap">
+        <h2 class="section">What it can't do</h2>
+        <ul class="limits">
+          <li>It runs in the visitor's browser, so a determined visitor can remove the wall with developer tools or by turning off JavaScript. It stops casual skipping, not everyone. Content that must stay private belongs behind a server-side login.</li>
+          <li>Detection is a best guess. A strict Content Security Policy, a flaky connection, or a privacy extension can cause a false alarm, so test on your own site and keep the button's message clear.</li>
+          <li>Some visitors will leave instead of turning their blocker off. Ask politely and say what the ads pay for.</li>
+          <li>Name the file something neutral like <code class="inline">blockwall.js</code>. Some blocker lists block files with "ads" or "adblock" in the name, and then the wall never loads.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">BlockWall 1.0. Free to use and change.</div>
+  </footer>
+</div>
+
+<script src="blockwall.js"></script>
+<script>
+(function () {
+  'use strict';
+  var W = window.AdBlockWall;
+  var readout = document.getElementById('readout');
+  var stateText = document.getElementById('state-text');
+  var detail = document.getElementById('detail');
+  var recheck = document.getElementById('recheck');
+  var preview = document.getElementById('preview');
+  var copyBtn = document.getElementById('copy');
+  var snippet = document.getElementById('snippet');
+
+  function show(state, text, more) {
+    readout.setAttribute('data-state', state);
+    stateText.textContent = text;
+    detail.textContent = more;
+  }
+
+  function refresh() {
+    if (!W) {
+      show('error', 'The script did not load', 'blockwall.js is missing, or your blocker stopped it from loading. Check the file path in the script tag.');
+      return;
+    }
+    show('checking', 'Checking\u2026', 'Running the same checks BlockWall uses on your site.');
+    W.detect().then(function (blocked) {
+      if (blocked) {
+        show('blocked', 'Ad blocker detected', 'On a site using BlockWall, you would see the wall now. Use "Preview the wall" to see it.');
+      } else {
+        show('clear', 'No ad blocker detected', 'Visitors like you would see the site normally. Turn on a blocker, then check again to see it change.');
+      }
+    }, function () {
+      show('error', 'The check failed', 'Reload the page and try again.');
+    });
+  }
+
+  if (W) {
+    W.configure({
+      target: '#page',
+      title: 'Please turn off your ad blocker',
+      message: 'This is a preview. If you have no blocker running, press the button and the wall will come down.'
+    });
+  }
+
+  preview.addEventListener('click', function () {
+    if (!W) { refresh(); return; }
+    W.lock();
+  });
+  recheck.addEventListener('click', refresh);
+  window.addEventListener('focus', function () { if (W) refresh(); });
+
+  copyBtn.addEventListener('click', function () {
+    var text = snippet.textContent;
+    function done(ok) {
+      copyBtn.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+      setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1800);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { selectSnippet(); done(false); });
+    } else {
+      selectSnippet();
+      done(false);
+    }
+  });
+
+  function selectSnippet() {
+    var range = document.createRange();
+    range.selectNodeContents(snippet);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  refresh();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BlockWall documentation</title>
+<meta name="description" content="Install, configure and troubleshoot BlockWall, the JavaScript file that locks page content while an ad blocker is on.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f2f4f1; --ink: #1a2230; --muted: #4d596b; --line: #cfd6d0;
+  --signal: #2447f5; --code-bg: #1a2230; --code-ink: #e8ecf4;
+  --sans: "Familjen Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 18px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--signal); }
+a:focus-visible { outline: 3px solid #9db0ff; outline-offset: 3px; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+header { padding: 22px 0; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.brand { font-weight: 700; font-size: 20px; letter-spacing: -0.01em; color: var(--ink); text-decoration: none; }
+header nav a { margin-left: 20px; color: var(--ink); text-decoration: none; font-size: 16px; }
+header nav a:hover { color: var(--signal); }
+
+.layout { display: grid; gap: 40px; padding: 40px 0 64px; grid-template-columns: 1fr; }
+@media (min-width: 860px) { .layout { grid-template-columns: 200px 1fr; } }
+.toc { font-size: 16px; }
+.toc ul { list-style: none; margin: 0; padding: 0; }
+.toc li { margin-bottom: 8px; }
+.toc a { color: var(--muted); text-decoration: none; }
+.toc a:hover { color: var(--signal); }
+@media (min-width: 860px) { .toc { position: sticky; top: 24px; align-self: start; } }
+
+article { min-width: 0; max-width: 42em; }
+h1 { margin: 0 0 12px; font-size: clamp(34px, 5vw, 48px); line-height: 1.08; letter-spacing: -0.03em; }
+h2 { margin: 56px 0 16px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 28px; line-height: 1.2; letter-spacing: -0.02em; }
+h3 { margin: 32px 0 8px; font-size: 20px; }
+p { margin: 0 0 16px; }
+.lede { color: var(--muted); font-size: 20px; }
+code { font: 500 0.88em var(--mono); background: #e2e7e1; padding: 2px 6px; border-radius: 4px; }
+pre { margin: 0 0 20px; padding: 18px 20px; overflow-x: auto; border-radius: 12px; background: var(--code-bg); color: var(--code-ink); font: 500 14.5px/1.65 var(--mono); }
+pre code { background: none; padding: 0; font-size: inherit; }
+.tablewrap { overflow-x: auto; margin: 0 0 20px; }
+table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 16px; }
+th, td { padding: 10px 14px 10px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--muted); }
+td:first-child { font-family: var(--mono); font-size: 14px; white-space: nowrap; }
+.note { margin: 0 0 20px; padding: 14px 18px; border-left: 4px solid var(--signal); background: #fff; }
+footer { padding: 28px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="index.html">BlockWall</a>
+    <nav aria-label="Main">
+      <a href="index.html">Home</a>
+      <a href="docs.html" aria-current="page">Docs</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="toc" aria-label="On this page">
+    <ul>
+      <li><a href="#quickstart">Quick start</a></li>
+      <li><a href="#options">Options</a></li>
+      <li><a href="#api">JavaScript API</a></li>
+      <li><a href="#events">Events and callbacks</a></li>
+      <li><a href="#styling">Styling the wall</a></li>
+      <li><a href="#examples">Examples</a></li>
+      <li><a href="#testing">Testing</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#limits">Limits</a></li>
+    </ul>
+  </nav>
+
+  <article>
+    <h1>Documentation</h1>
+    <p class="lede">BlockWall is one file, <code>blockwall.js</code>, with no dependencies. It detects ad blockers and locks your content until the visitor turns the blocker off for your site.</p>
+
+    <h2 id="quickstart">Quick start</h2>
+    <p>1. Upload <code>blockwall.js</code> to your site. Keep the name neutral: some blocker lists block files with "ads" or "adblock" in the name.</p>
+    <p>2. Wrap the content you want to lock in one element, for example <code>&lt;div id="content"&gt;</code>.</p>
+    <p>3. Add this before the closing <code>&lt;/body&gt;</code> tag:</p>
+<pre><code>&lt;script src="blockwall.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  AdBlockWall.init({ target: "#content" });
+&lt;/script&gt;</code></pre>
+    <p>If you prefer no second script block, put the options on the script tag:</p>
+<pre><code>&lt;script src="blockwall.js" data-auto data-target="#content" data-mode="blur"&gt;&lt;/script&gt;</code></pre>
+    <p>The data attributes are <code>data-target</code>, <code>data-mode</code>, <code>data-title</code>, <code>data-message</code>, <code>data-button-text</code>, <code>data-recheck-interval</code> and <code>data-network-check="false"</code>.</p>
+    <div class="note">Do not set <code>target</code> to <code>body</code> or <code>html</code>. The wall is added to the body, so a target that contains it is skipped. Leave <code>target</code> out to lock every direct child of the body.</div>
+
+    <h2 id="options">Options</h2>
+    <p>Pass these to <code>AdBlockWall.init()</code> or <code>AdBlockWall.configure()</code>.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>target</td><td>body children</td><td>CSS selector of the elements to lock. Several matches are all locked.</td></tr>
+          <tr><td>mode</td><td>"blur"</td><td>"blur" leaves content visible but unreadable. "hide" hides it completely.</td></tr>
+          <tr><td>title</td><td>"Please turn off your ad blocker"</td><td>Heading on the wall.</td></tr>
+          <tr><td>message</td><td>built in</td><td>Text under the heading. Plain text only.</td></tr>
+          <tr><td>buttonText</td><td>"I've turned it off"</td><td>Label of the re-check button.</td></tr>
+          <tr><td>checkingText</td><td>"Checking…"</td><td>Shown while the re-check runs.</td></tr>
+          <tr><td>stillBlockedText</td><td>built in</td><td>Shown if the blocker is still detected after the button is pressed.</td></tr>
+          <tr><td>networkCheck</td><td>true</td><td>Also request a well-known ad script. Set false if your Content Security Policy blocks outside requests.</td></tr>
+          <tr><td>baitUrl</td><td>Google ad script URL</td><td>The URL requested by the network check.</td></tr>
+          <tr><td>recheckInterval</td><td>15000</td><td>Milliseconds between automatic checks. 0 turns the timer off.</td></tr>
+          <tr><td>zIndex</td><td>2147483000</td><td>Stacking order of the wall.</td></tr>
+          <tr><td>onDetect</td><td>null</td><td>Function called when the wall goes up.</td></tr>
+          <tr><td>onClear</td><td>null</td><td>Function called when the wall comes down.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>To keep one element usable while everything else is locked, such as a contact link, add the attribute <code>data-abw-ignore</code> to it. This works for direct children of the body, or for matches of your <code>target</code> selector.</p>
+
+    <h2 id="api">JavaScript API</h2>
+    <p>The script adds one global, <code>AdBlockWall</code>.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>init(options)</td><td>AdBlockWall</td><td>Starts checking: once on load, then when the tab regains focus, and on the timer. Calling it twice does nothing.</td></tr>
+          <tr><td>configure(options)</td><td>AdBlockWall</td><td>Merges options without starting anything.</td></tr>
+          <tr><td>detect()</td><td>Promise&lt;boolean&gt;</td><td>Resolves true if a blocker is detected. Does not touch the page.</td></tr>
+          <tr><td>check()</td><td>Promise&lt;boolean&gt;</td><td>Detects, then raises or lowers the wall to match.</td></tr>
+          <tr><td>lock()</td><td>AdBlockWall</td><td>Raises the wall by hand, for previews. The next check() overrides it.</td></tr>
+          <tr><td>unlock()</td><td>AdBlockWall</td><td>Lowers the wall by hand.</td></tr>
+          <tr><td>isLocked()</td><td>boolean</td><td>True while the wall is up.</td></tr>
+          <tr><td>destroy()</td><td>void</td><td>Stops all checking, removes the listeners and lowers the wall.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="events">Events and callbacks</h2>
+    <p>When the wall goes up or comes down, BlockWall calls your <code>onDetect</code> or <code>onClear</code> function and fires a DOM event on <code>document</code>. Use whichever you prefer.</p>
+<pre><code>document.addEventListener("adblockwall:detected", function () {
+  console.log("wall is up");
+});
+document.addEventListener("adblockwall:cleared", function () {
+  console.log("wall is down");
+});</code></pre>
+    <p>The events fire only when the state changes, not on every check.</p>
+
+    <h2 id="styling">Styling the wall</h2>
+    <p>BlockWall adds its own stylesheet with a single-class selector for each part. Override them with a more specific selector in your own CSS.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Class</th><th>Part</th></tr></thead>
+        <tbody>
+          <tr><td>.abw-overlay</td><td>Full-screen backdrop.</td></tr>
+          <tr><td>.abw-card</td><td>The dialog box.</td></tr>
+          <tr><td>.abw-title</td><td>The heading.</td></tr>
+          <tr><td>.abw-msg</td><td>The message.</td></tr>
+          <tr><td>.abw-btn</td><td>The re-check button.</td></tr>
+          <tr><td>.abw-status</td><td>The line under the button.</td></tr>
+          <tr><td>.abw-blur, .abw-hide</td><td>Added to locked content.</td></tr>
+        </tbody>
+      </table>
+    </div>
+<pre><code>.abw-overlay .abw-card { max-width: 520px; border-radius: 4px; }
+.abw-overlay .abw-btn  { background: #0a7d4b; }</code></pre>
+    <p>BlockWall resets the overlay's class and inline style if they are changed, so style it through your stylesheet rather than through scripts.</p>
+
+    <h2 id="examples">Examples</h2>
+    <h3>Hide content completely</h3>
+<pre><code>AdBlockWall.init({ target: "#article", mode: "hide" });</code></pre>
+    <h3>Custom text</h3>
+<pre><code>AdBlockWall.init({
+  target: "#content",
+  title: "Ads pay for this site",
+  message: "Please add us to your blocker's allow list, then press the button.",
+  buttonText: "Done, let me in"
+});</code></pre>
+    <h3>Count how many visitors see the wall</h3>
+<pre><code>AdBlockWall.init({
+  target: "#content",
+  onDetect: function () {
+    navigator.sendBeacon("/count-wall", "shown");
+  }
+});</code></pre>
+    <h3>Check without locking</h3>
+<pre><code>AdBlockWall.detect().then(function (blocked) {
+  if (blocked) { /* show a banner instead of the wall */ }
+});</code></pre>
+    <h3>Single-page apps</h3>
+    <p>Lock the stable container that holds your routes, such as <code>#app</code>, and call <code>init()</code> once. Content that your framework adds inside that container later is covered by the container's lock.</p>
+
+    <h2 id="testing">Testing</h2>
+    <p>Install an ad blocker such as uBlock Origin in a browser profile, open your page, and the wall should appear within a second. Press the button with the blocker still on and you should see the "still detected" message. Turn the blocker off for the site, press the button, and the wall should come down without a reload.</p>
+    <p>To test the wall with no blocker, run <code>AdBlockWall.lock()</code> in the browser console on a page that loads the script. Press the button to lower it again.</p>
+    <p>Test in a private window with your extensions switched off as well, so you know ordinary visitors never see the wall.</p>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    <h3>The wall never appears</h3>
+    <p>Open the browser console. If <code>AdBlockWall is not defined</code> appears, the script did not load: check the path, or the blocker blocked the file. Rename it to something neutral.</p>
+    <h3>The wall appears for visitors without a blocker</h3>
+    <p>Your Content Security Policy probably blocks the network check. Set <code>networkCheck: false</code>, or add the bait URL's host to your <code>connect-src</code> rule. Privacy extensions and some corporate networks also block ad domains, and they look the same as an ad blocker.</p>
+    <h3>The wall does not cover everything</h3>
+    <p>Content outside your <code>target</code> stays unlocked. Either widen the selector or leave out <code>target</code> to lock all direct children of the body. Elements added to the body after the wall went up are locked automatically.</p>
+    <h3>The wall appears but the page behind can still be tabbed through</h3>
+    <p>BlockWall marks locked content as <code>inert</code>, which is supported in Chrome 102, Safari 15.5, Firefox 112 and newer. Older browsers still get the blur and the blocked clicks, but keyboard focus can reach the content behind.</p>
+    <h3>The wall stays up after the visitor allow-lists the site</h3>
+    <p>Some blockers need a page reload before the change takes effect. The re-check button does not reload the page, so add a line to your message such as "If this stays, reload the page."</p>
+
+    <h2 id="limits">Limits</h2>
+    <p>BlockWall runs in the visitor's browser. A determined visitor can remove it with developer tools, a user script, or by turning off JavaScript. Use it to ask casual visitors for support, not to protect content that must stay private. Detection is a best guess, and a few blockers and privacy tools can slip through or cause false alarms, so keep your message friendly.</p>
+    <p>The wall is a dialog that keyboard and screen reader users can operate, but some visitors cannot install or configure a blocker themselves, such as people on a managed work network. Give them a way to reach you if the wall does not clear.</p>
+  </article>
+</div>
+
+<footer>
+  <div class="wrap">BlockWall 1.0. Free to use and change.</div>
+</footer>
+</body>
+</html>
